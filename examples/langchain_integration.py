@@ -1,5 +1,5 @@
 """
-LangChain integration — PII redaction in document pipelines + LangSmith trace masking.
+LangChain integration — document anonymizer + LangSmith trace masking + agent middleware.
 
 Install: pip install kloak[langchain]
 """
@@ -8,7 +8,7 @@ import logging
 
 from langchain_core.documents import Document
 
-from kloak.integrations.langchain import KloakAnonymizer, KloakLangSmith
+from kloak.integrations.langchain import KloakAnonymizer, KloakLangSmith, KloakMiddleware
 
 logging.getLogger("kloak").setLevel(logging.ERROR)
 
@@ -60,3 +60,33 @@ print(redacted_input["messages"][0]["content"])
 # Use with LangSmith Client:
 # from langsmith import Client
 # client = Client(anonymizer=KloakLangSmith())
+
+
+# --- Surface C: Agent middleware (LangChain agents + Deep Agents) ------------
+
+# Basic redaction — scrubs PII before LLM calls and from tool outputs
+middleware = KloakMiddleware()
+# agent = create_agent(model="anthropic:claude-sonnet-4-6", middleware=[middleware])
+# agent = create_deep_agent(model="anthropic:claude-sonnet-4-6", middleware=[middleware])
+
+# Tokenize mode — reversible redaction; recover originals after the agent run
+# from kloak.engine import KloakEngine
+tokenize_mw = KloakMiddleware(mode="tokenize")
+# result = agent.invoke({"messages": [{"role": "user", "content": "..."}]})
+# Restore PII in the final output using the accumulated mapping:
+# original = KloakEngine.deanonymize(result["output"], tokenize_mw.mapping)
+
+# Per-tool filtering — only redact output from file tools, not internal tools
+filtered_mw = KloakMiddleware(
+    tool_include=["read_file", "search_web"],
+    redact_outputs=True,  # also redact LLM responses
+)
+
+# Example output — middleware operating on a simulated before_model state
+from langchain_core.messages import HumanMessage  # noqa: E402
+
+state = {"messages": [HumanMessage(content="My name is Ahmad and my email is ahmad@mail.com")]}
+result = middleware.before_model(state, None)
+if result:
+    print(result["messages"][-1].content)
+    # → My name is Ahmad and my email is <EMAIL_ADDRESS>
