@@ -101,3 +101,24 @@ class TestTokenize:
         # First email in text gets _1, second gets _2
         assert result.mapping.get("<EMAIL_ADDRESS_1>") == "ahmad@mail.com"
         assert result.mapping.get("<EMAIL_ADDRESS_2>") == "bob@mail.com"
+
+
+class TestModuleLevelTokenize:
+    def test_module_tokenize(self):
+        import kloak
+
+        result = kloak.tokenize("Email ahmad@mail.com")
+        assert "<EMAIL_ADDRESS_1>" in result.text
+        assert result.mapping["<EMAIL_ADDRESS_1>"] == "ahmad@mail.com"
+
+    def test_module_deanonymize(self):
+        import kloak
+
+        result = kloak.tokenize("Email ahmad@mail.com")
+        restored = kloak.deanonymize(result.text, result.mapping)
+        assert restored == "Email ahmad@mail.com"
+
+    def test_module_tokenize_result_exported(self):
+        from kloak import TokenizeResult
+
+        assert TokenizeResult is not None

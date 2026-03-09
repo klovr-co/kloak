@@ -191,9 +191,7 @@ class KloakEngine:
 
         # Resolve overlapping entities: keep highest-score (longest span as tiebreaker)
         # Sort by start position (left-to-right) for consistent numbering
-        sorted_results = self._resolve_overlaps(
-            sorted(analyzer_results, key=lambda r: r.start)
-        )
+        sorted_results = self._resolve_overlaps(sorted(analyzer_results, key=lambda r: r.start))
 
         # Assign per-type counters
         type_counters: dict[str, int] = {}
