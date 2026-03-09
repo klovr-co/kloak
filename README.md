@@ -87,6 +87,34 @@ print(kloak.backend)
 # → "regex-only"             (core install, no spaCy)
 ```
 
+### Reversible Redaction (tokenize → deanonymize)
+
+For LLM pipelines where you need to restore original values after processing:
+
+```python
+import kloak
+
+# Tokenize — PII gets numbered placeholders
+result = kloak.tokenize("Email ahmad@mail.com and bob@mail.com")
+print(result.text)
+# "Email <EMAIL_ADDRESS_1> and <EMAIL_ADDRESS_2>"
+
+# Send tokenized text to LLM...
+llm_response = "I'll reply to <EMAIL_ADDRESS_1> first."
+
+# Deanonymize — restore original values
+original = kloak.deanonymize(llm_response, result.mapping)
+print(original)
+# "I'll reply to ahmad@mail.com first."
+
+# Persist mapping for later use
+result.to_json("mapping.json")
+
+# Load mapping in another process
+from kloak import TokenizeResult
+mapping = TokenizeResult.load_mapping("mapping.json")
+```
+
 ### KloakEngine for repeated calls
 
 ```python
@@ -165,7 +193,7 @@ KLOAK_LOG_LEVEL=INFO
 
 - **No prompt injection detection** — use [LLM Guard](https://github.com/protectai/llm-guard) or [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - **No output scanning** — kloak runs pre-flight, before text reaches the LLM
-- **No token map storage** — `redact()` strips permanently; if you need reversible tokenisation, that's a future extra
+- **No token map storage** — `redact()` strips permanently; use `tokenize()` + `deanonymize()` for reversible redaction
 - **No business-context sensitivity** — kloak detects PII patterns, not confidential business information
 - **No streaming / audio** — text only, processed in batch
 - **No encryption** — kloak redacts (removes/replaces), not encrypts
