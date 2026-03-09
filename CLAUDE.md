@@ -8,6 +8,7 @@ PII + secrets redaction library for Python. Built on Microsoft Presidio. Apache 
 - `kloak/nlp_backend.py` — auto-detects spaCy, falls back to NullNlpEngine (regex-only)
 - `kloak/extras/malaysian/` — MyKad, MY phone, landline, SSM, bank account recognizers
 - `kloak/extras/gitleaks/` — dynamic GitLeaks rule loading with file cache
+- `kloak/integrations/langchain.py` — KloakAnonymizer (DocumentTransformer) + KloakLangSmith (trace masking)
 - `tests/` — pytest, outside package; core tests flat, extras tests in `tests/extras/<name>/`
 
 ## Public API
@@ -25,9 +26,10 @@ PII + secrets redaction library for Python. Built on Microsoft Presidio. Apache 
 - `[malaysian]` — Malaysian PII (regex-only, zero extra deps)
 - `[gitleaks]` — secrets via GitLeaks TOML (requires httpx)
 - `[nlp]` — spaCy NER for names/orgs/locations
+- `[langchain]` — LangChain DocumentTransformer + LangSmith trace masking (requires langchain-core)
 
 **Every extra must have a matching example in `examples/<extra-name>.py`.**
-Current: `examples/malaysian.py`, `examples/gitleaks.py`
+Current: `examples/malaysian.py`, `examples/gitleaks.py`, `examples/langchain.py`
 
 **Every extra must have tests under `tests/extras/<extra-name>/`.**
-Current: `tests/extras/malaysian/`, `tests/extras/gitleaks/`
+Current: `tests/extras/malaysian/`, `tests/extras/gitleaks/`, `tests/extras/langchain/`

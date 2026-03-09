@@ -30,6 +30,7 @@ dependencies = [
 nlp = ["spacy>=3.7"]
 malaysian = []  # marker extra (recognizers ship in core package)
 gitleaks = ["httpx>=0.27"]
+langchain = ["langchain-core>=0.2"]
 dev = ["pytest>=8.0", "pytest-cov", "ruff"]
 
 [project.urls]
