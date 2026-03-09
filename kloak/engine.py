@@ -216,3 +216,13 @@ class KloakEngine:
             mapping=mapping,
             entities=[EntityMatch.from_presidio(r) for r in sorted_results],
         )
+
+    @staticmethod
+    def deanonymize(text: str, mapping: dict[str, str]) -> str:
+        """Replace tokens in text with original values from mapping."""
+        if not mapping:
+            return text
+        # Sort longest-first to prevent partial matches (e.g. _10 before _1)
+        for token in sorted(mapping, key=len, reverse=True):
+            text = text.replace(token, mapping[token])
+        return text
