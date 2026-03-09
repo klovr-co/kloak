@@ -6,12 +6,12 @@ import logging
 from importlib import import_module
 from threading import Lock
 
-from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
+from presidio_analyzer import AnalyzerEngine, RecognizerRegistry, RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 
 from kloak.config import DEFAULT_LANGUAGE, DEFAULT_SCORE_THRESHOLD
 from kloak.nlp_backend import detect_backend
-from kloak.types import EntityMatch, RedactResult
+from kloak.types import EntityMatch, RedactResult, TokenizeResult
 
 logger = logging.getLogger("kloak")
 
@@ -143,3 +143,84 @@ class KloakEngine:
             text=anonymizer_result.text,
             entities=[EntityMatch.from_presidio(r) for r in analyzer_results],
         )
+
+    @staticmethod
+    def _resolve_overlaps(
+        results: list[RecognizerResult],
+    ) -> list[RecognizerResult]:
+        """Remove overlapping entities, keeping the highest-score (longest span) one."""
+        kept: list[RecognizerResult] = []
+        for r in results:
+            overlapping = [k for k in kept if k.start < r.end and r.start < k.end]
+            if not overlapping:
+                kept.append(r)
+                continue
+            # Compare against the worst overlapping entity
+            weakest = min(overlapping, key=lambda k: (k.score, k.end - k.start))
+            if (r.score, r.end - r.start) > (weakest.score, weakest.end - weakest.start):
+                for k in overlapping:
+                    kept.remove(k)
+                kept.append(r)
+        return sorted(kept, key=lambda r: r.start)
+
+    def tokenize(
+        self,
+        text: str,
+        *,
+        language: str | None = None,
+        include: list[str] | None = None,
+        exclude: list[str] | None = None,
+    ) -> TokenizeResult:
+        """Tokenize PII with numbered placeholders. Returns TokenizeResult with mapping."""
+        self._ensure_initialized()
+        lang = language or self._language
+        entities = self._resolve_entities(include, exclude)
+
+        if entities is not None and len(entities) == 0:
+            return TokenizeResult(text=text, mapping={}, entities=[])
+
+        analyzer_results = self._analyzer.analyze(
+            text=text,
+            language=lang,
+            entities=entities,
+            score_threshold=self._score_threshold,
+        )
+
+        if not analyzer_results:
+            return TokenizeResult(text=text, mapping={}, entities=[])
+
+        # Resolve overlapping entities: keep highest-score (longest span as tiebreaker)
+        # Sort by start position (left-to-right) for consistent numbering
+        sorted_results = self._resolve_overlaps(sorted(analyzer_results, key=lambda r: r.start))
+
+        # Assign per-type counters
+        type_counters: dict[str, int] = {}
+        token_assignments: list[tuple[RecognizerResult, str]] = []
+        for r in sorted_results:
+            count = type_counters.get(r.entity_type, 0) + 1
+            type_counters[r.entity_type] = count
+            token = f"<{r.entity_type}_{count}>"
+            token_assignments.append((r, token))
+
+        # Build mapping and replace text (process right-to-left to preserve positions)
+        mapping: dict[str, str] = {}
+        result_text = text
+        for r, token in reversed(token_assignments):
+            mapping[token] = text[r.start : r.end]
+            result_text = result_text[: r.start] + token + result_text[r.end :]
+
+        return TokenizeResult(
+            text=result_text,
+            mapping=mapping,
+            entities=[EntityMatch.from_presidio(r) for r in sorted_results],
+        )
+
+    @staticmethod
+    def deanonymize(text: str, mapping: dict[str, str]) -> str:
+        """Replace tokens in text with original values from mapping."""
+        if not mapping:
+            return text
+        # Sort longest-first to prevent partial matches (e.g. _10 before _1)
+        for token in sorted(mapping, key=len, reverse=True):
+            text = text.replace(token, mapping[token])
+        return text
