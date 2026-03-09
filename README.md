@@ -40,7 +40,7 @@ The moment you send text to an LLM API, you've lost control of it. Kloak strips 
 ```bash
 pip install kloak                # Core — regex-only, zero NLP deps, works anywhere
 pip install kloak[nlp]           # + spaCy NER (names, orgs, locations)
-pip install kloak[my]            # + Malaysian PII (MyKad, phones, bank accounts, SSM)
+pip install kloak[malaysia]            # + Malaysian PII (MyKad, phones, bank accounts, SSM)
 pip install kloak[gitleaks]      # + GitLeaks secrets detection (API keys, tokens)
 pip install kloak[nlp,my,gitleaks]  # Full stack
 ```
@@ -101,7 +101,7 @@ for text in my_texts:
 
 ## Extras
 
-### Malaysian PII (`kloak[my]`)
+### Malaysian PII (`kloak[malaysia]`)
 
 Zero extra dependencies — just regex patterns for Malaysian-specific PII:
 

@@ -43,6 +43,6 @@ jobs:
       - name: Install Python
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
-        run: uv sync --extra dev --extra my --extra gitleaks --python ${{ matrix.python-version }}
+        run: uv sync --extra dev --extra malaysia --extra gitleaks --python ${{ matrix.python-version }}
       - name: Test with coverage
         run: uv run pytest tests/ -v --cov=kloak --cov-report=term-missing

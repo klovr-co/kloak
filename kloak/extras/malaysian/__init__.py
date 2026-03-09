@@ -1,4 +1,4 @@
-"""Malaysian PII recognizers (kloak[my])."""
+"""Malaysian PII recognizers (kloak[malaysia])."""
 
 from kloak.extras.malaysian.recognizers import get_recognizers
 
