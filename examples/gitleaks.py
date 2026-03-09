@@ -39,7 +39,7 @@ print(result.text)
 result = kloak.redact(f"my stripe key: {_STRIPE}")
 for entity in result.entities:
     original = f"my stripe key: {_STRIPE}"
-    print(f"{entity.type}: '{original[entity.start:entity.end]}' (score={entity.score:.2f})")
+    print(f"{entity.type}: '{original[entity.start : entity.end]}' (score={entity.score:.2f})")
 
 
 # --- Mixed PII + secrets in one pass ----------------------------------------

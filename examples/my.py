@@ -67,14 +67,11 @@ print(result.text)
 
 # --- Mixed Manglish / real-world message ------------------------------------
 
-text = (
-    "IC saya 880101-01-1234. "
-    "Hubungi 012-3456789 atau pejabat 03-12345678 kalau ada soalan."
-)
+text = "IC saya 880101-01-1234. Hubungi 012-3456789 atau pejabat 03-12345678 kalau ada soalan."
 result = kloak.redact(text, include=MY_ENTITIES)
 print(result.text)
 # → IC saya <MY_IC>. Hubungi <MY_MOBILE> atau pejabat <MY_LANDLINE> kalau ada soalan.
 
 print("Entities found:")
 for entity in result.entities:
-    print(f"  {entity.type}: '{text[entity.start:entity.end]}'")
+    print(f"  {entity.type}: '{text[entity.start : entity.end]}'")
