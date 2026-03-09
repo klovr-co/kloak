@@ -26,6 +26,18 @@ class TestKloakAnonymizer:
         result = anonymizer.transform_documents(docs)
         assert result[0].metadata == {"source": "file.txt"}
 
+    def test_deep_copies_metadata(self):
+        anonymizer = KloakAnonymizer()
+        docs = [
+            Document(
+                page_content="Email: test@example.com",
+                metadata={"nested": {"source": "file.txt"}},
+            )
+        ]
+        result = anonymizer.transform_documents(docs)
+        result[0].metadata["nested"]["source"] = "mutated"
+        assert docs[0].metadata["nested"]["source"] == "file.txt"
+
     def test_does_not_mutate_input(self):
         anonymizer = KloakAnonymizer()
         original_content = "Email: test@example.com"
@@ -134,12 +146,19 @@ class TestKloakLangSmith:
         assert "test@example.com" not in result
         assert "<EMAIL_ADDRESS>" in result
 
-    def test_depth_limit(self):
+    def test_deep_nesting_redacts(self):
         masker = KloakLangSmith()
-        # Build deeply nested structure
         data = "test@example.com"
         for _ in range(15):
             data = {"nested": data}
         result = masker(data)
-        # Should not crash, but deep values may not be redacted due to depth limit
-        assert isinstance(result, dict)
+        leaf = result
+        for _ in range(15):
+            leaf = leaf["nested"]
+        assert leaf == "<EMAIL_ADDRESS>"
+
+    def test_max_depth_configurable(self):
+        masker = KloakLangSmith(max_depth=2)
+        data = {"a": {"b": {"c": "test@example.com"}}}
+        result = masker(data)
+        assert result["a"]["b"]["c"] == "test@example.com"

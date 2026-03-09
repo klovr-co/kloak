@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 
 try:
@@ -57,7 +58,7 @@ class KloakAnonymizer(BaseDocumentTransformer):
             redacted = self._engine.redact(
                 doc.page_content, include=self._include, exclude=self._exclude
             )
-            result.append(Document(page_content=redacted.text, metadata=doc.metadata.copy()))
+            result.append(Document(page_content=redacted.text, metadata=deepcopy(doc.metadata)))
         return result
 
 
@@ -78,6 +79,8 @@ class KloakLangSmith:
         score_threshold: Minimum confidence score to redact an entity.
         include: Entity types to redact (allowlist).
         exclude: Entity types to skip (blocklist).
+        max_depth: Optional recursion limit when walking nested structures.
+            ``None`` (default) means no explicit depth limit.
     """
 
     def __init__(
@@ -87,27 +90,45 @@ class KloakLangSmith:
         score_threshold: float = DEFAULT_SCORE_THRESHOLD,
         include: list[str] | None = None,
         exclude: list[str] | None = None,
+        max_depth: int | None = None,
     ) -> None:
         self._engine = KloakEngine(language=language, score_threshold=score_threshold)
         self._include = include
         self._exclude = exclude
+        self._max_depth = max_depth
 
     def __call__(self, data: Any) -> Any:
         """Walk a LangSmith data dict and redact string content."""
-        return self._walk(data)
+        return self._walk(data, depth=self._max_depth, seen=set())
 
     def _redact_text(self, text: str) -> str:
         if not text or not text.strip():
             return text
         return self._engine.redact(text, include=self._include, exclude=self._exclude).text
 
-    def _walk(self, data: Any, *, depth: int = 10) -> Any:
-        if depth <= 0:
-            return data
+    def _walk(self, data: Any, *, depth: int | None, seen: set[int]) -> Any:
         if isinstance(data, str):
             return self._redact_text(data)
+        if depth is not None and depth <= 0:
+            return data
         if isinstance(data, dict):
-            return {k: self._walk(v, depth=depth - 1) for k, v in data.items()}
+            obj_id = id(data)
+            if obj_id in seen:
+                return data
+            seen.add(obj_id)
+            try:
+                next_depth = None if depth is None else depth - 1
+                return {k: self._walk(v, depth=next_depth, seen=seen) for k, v in data.items()}
+            finally:
+                seen.remove(obj_id)
         if isinstance(data, list):
-            return [self._walk(item, depth=depth - 1) for item in data]
+            obj_id = id(data)
+            if obj_id in seen:
+                return data
+            seen.add(obj_id)
+            try:
+                next_depth = None if depth is None else depth - 1
+                return [self._walk(item, depth=next_depth, seen=seen) for item in data]
+            finally:
+                seen.remove(obj_id)
         return data
