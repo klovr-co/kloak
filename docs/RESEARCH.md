@@ -40,11 +40,9 @@ This means:
 pip install kloak                              # Core (regex-only, zero NLP deps)
 pip install kloak[nlp]                         # + spaCy NER (name/org/location detection)
 pip install kloak[my]                          # + Malaysian recognizers + PDPA preset
-pip install kloak[whatsapp]                    # + WhatsApp message parsing
 pip install kloak[gitleaks]                     # + Dynamic GitLeaks API key detection
 pip install kloak[compliance]                  # + Audit logging + compliance reports
-pip install kloak[my,whatsapp]                 # Klovr internal stack
-pip install kloak[nlp,my,whatsapp,gitleaks,compliance]  # Full enterprise
+pip install kloak[nlp,my,gitleaks,compliance]  # Full enterprise
 ```
 
 ---
@@ -113,11 +111,6 @@ kloak/
 │   │   ├── pdpa.py              # PDPA preset — one flag enables all MY-required entities
 │   │   └── test_fixtures.json   # Sample texts + expected redactions for validation
 │   │
-│   ├── whatsapp/                # pip install kloak[whatsapp]
-│   │   ├── __init__.py
-│   │   ├── parser.py            # Strip timestamps, forwarded labels, system messages
-│   │   └── recognizers.py       # WA-specific: contact cards, location shares, WA links
-│   │
 │   ├── gitleaks/                # pip install kloak[gitleaks]
 │   │   ├── __init__.py
 │   │   ├── gitleaks_loader.py   # Fetch + parse GitLeaks TOML → Presidio recognizers
@@ -129,7 +122,7 @@ kloak/
 │       └── report.py            # Batch compliance summary report
 
 ├── integrations/                # Framework integrations
-│   ├── langchain.py             # KloakTransformer, KloakRedact, KloakDeanonymize, KloakCallbackHandler
+│   ├── langchain.py             # KloakAnonymizer (DocumentTransformer) + KloakLangSmith (trace masking)
 │   ├── llamaindex.py            # Phase 4 — KloakNodePostprocessor (deferred)
 │   └── precommit.py             # Pre-commit hook entry point
 
@@ -141,7 +134,6 @@ kloak/
 │   ├── test_core.py
 │   ├── test_core_regex_only.py  # Tests that pass WITHOUT spaCy installed
 │   ├── test_malaysian.py
-│   ├── test_whatsapp.py
 │   ├── test_gitleaks.py
 │   ├── test_compliance.py
 │   └── test_plugin_contract.py  # Validates any plugin against the base contract
@@ -169,7 +161,7 @@ The build order is dictated by Klovr's own stack needs first, then growth:
 | Phase | What | Why | Target |
 |-------|------|-----|--------|
 | **Phase 1** | Core + `[my]` + `[gitleaks]` | Klovr needs MY PII + secrets. Core proves the DX. GitLeaks is the "wow" differentiator | Week 1–3 |
-| **Phase 2** | `[whatsapp]` + LangChain integration | Klovr's WhatsApp pipeline. LangChain = biggest ecosystem, #1 growth lever | Week 4–5 |
+| **Phase 2** | LangChain integration | LangChain = biggest ecosystem, #1 growth lever | Week 4–5 |
 | **Phase 3** | Plugin system + AGENTS.md + CLI scaffolding | Opens the contribution flywheel. AI agent friendliness is the moat | Week 6–7 |
 | **Phase 4** | Pre-commit + GitHub Action + LlamaIndex (if demand) | Expands discovery surfaces. DevSecOps crowd | Week 8+ |
 | **Phase 5** | `[compliance]` + other framework integrations | Only when enterprise prospects ask for it | When needed |
@@ -212,18 +204,7 @@ PDPA preset (`mode="pdpa"`):
 - Single flag to be compliant with Malaysian Personal Data Protection Act 2010
 - Returns a `pdpa_entities_found` summary in result
 
-### FR3 — WhatsApp Extra (`kloak[whatsapp]`) · Phase 2
-
-Pre-processing layer before redaction:
-- Strip WhatsApp timestamp prefixes: `[DD/MM/YYYY, HH:MM:SS]`
-- Strip forwarded message labels: `Forwarded many times`, `Forwarded`
-- Strip system messages: `Messages and calls are end-to-end encrypted`, `<name> added <name>`
-- Strip WhatsApp Web export headers
-- Handle contact card blocks (vCard format embedded in chat exports)
-- Handle location share messages: `Location: https://maps.google.com/?q=...`
-- Expose `parse_whatsapp(raw_text) -> ParsedChat` with messages as structured objects before passing to redactor
-
-### FR4 — GitLeaks Extra (`kloak[gitleaks]`) · Phase 1
+### FR3 — GitLeaks Extra (`kloak[gitleaks]`) · Phase 1
 
 Dynamic GitLeaks rule loading:
 - On first use, fetch GitLeaks TOML from:
@@ -245,7 +226,7 @@ Must cover at minimum:
 - Twilio tokens
 - Generic high-entropy strings (entropy threshold configurable via `KLOAK_ENTROPY_THRESHOLD`)
 
-### FR5 — Compliance Extra (`kloak[compliance]`) · Phase 5
+### FR4 — Compliance Extra (`kloak[compliance]`) · Phase 5
 
 > **Ship when needed.** Not until an enterprise prospect asks for it.
 
@@ -260,10 +241,10 @@ Compliance report:
 - Output formats: JSON, Markdown, plain text
 - Designed for audit trail submission
 
-### FR6 — Plugin System · Phase 3
+### FR5 — Plugin System · Phase 3
 
 Plugin registration and discovery:
-- All extras (regional, gitleaks, whatsapp, compliance) implement `KloakPlugin` base class
+- All extras (regional, gitleaks, compliance) implement `KloakPlugin` base class
 - Plugins register via Python entry points (`kloak.plugins` group in `pyproject.toml`)
 - `core/registry.py` auto-discovers all installed plugins on import — no manual registration
 - Third-party plugins (e.g. `pip install kloak-plugin-brazil`) auto-register on install
@@ -286,7 +267,7 @@ Plugin template (`extras/_template/`):
 - `PLUGIN_GUIDE.md` — step-by-step guide for building a plugin
 - Template generates working code that passes `kloak validate` out of the box (with stub patterns)
 
-### FR7 — Framework Integrations · Phase 2 (LangChain), Phase 4 (rest)
+### FR6 — Framework Integrations · Phase 2 (LangChain), Phase 4 (rest)
 
 #### LangChain Integration · Phase 2
 
@@ -454,7 +435,7 @@ final = kloak.deanonymize(llm_response.choices[0].message.content, result.token_
 
 ### Session consistency (same person = same token across messages)
 
-When processing a conversation (e.g. a WhatsApp thread), the same entity always maps to the same token within a session. The LLM sees a coherent conversation — it knows PERSON_001 and PERSON_002 are distinct people — without ever seeing real names.
+When processing a conversation (e.g. a chat thread), the same entity always maps to the same token within a session. The LLM sees a coherent conversation — it knows PERSON_001 and PERSON_002 are distinct people — without ever seeing real names.
 
 ```python
 # Message 1
@@ -512,14 +493,11 @@ engine = MalaysianEngine(
 ### With extras
 
 ```python
-# Malaysian + WhatsApp
-from kloak.extras.whatsapp import parse_whatsapp
+# Malaysian
 from kloak.extras.malaysian import MalaysianEngine
 
-chat = parse_whatsapp(raw_export)
 engine = MalaysianEngine(mode="pdpa")
-for message in chat.messages:
-    result = engine.redact(message.text)
+result = engine.redact("IC: 880101-01-1234, call 012-3456789")
 
 # Secrets
 from kloak.extras.gitleaks import SecretsEngine
@@ -553,7 +531,6 @@ Kloak runs on anything from a Raspberry Pi (regex-only) to a production server (
 | `pip install kloak` | ~50 MB | ~30 MB | ~50 MB | Any | No | Regex-only. Runs anywhere Python runs. CI runners, lambdas, Raspberry Pi, air-gapped servers |
 | `pip install kloak[my]` | ~50 MB | ~30 MB | ~50 MB | Any | No | Same as core — MY recognizers are just regex patterns, zero additional overhead |
 | `pip install kloak[gitleaks]` | ~55 MB + ~2 MB cache | ~35 MB | ~60 MB | Any | No | Adds httpx. First run fetches GitLeaks TOML (~2 MB), then works offline |
-| `pip install kloak[whatsapp]` | ~50 MB | ~30 MB | ~50 MB | Any | No | Same as core — parser is pure Python string processing |
 | `pip install kloak[nlp]` | ~200 MB | ~200 MB | ~300–400 MB | 2+ cores recommended | No | spaCy `en_core_web_sm` loads ~150 MB into memory. This is where name/org/location detection lives |
 | `kloak[nlp]` with `en_core_web_lg` | ~700 MB | ~600 MB | ~800 MB–1 GB | 2+ cores recommended | No | Manually installed large model. Better accuracy, much heavier |
 
@@ -572,7 +549,7 @@ Kloak runs on anything from a Raspberry Pi (regex-only) to a production server (
 - MacBook Air M1 / any i5+ handles this easily
 
 **Production API (high throughput)**
-- `pip install kloak[nlp,my,gitleaks,whatsapp]`
+- `pip install kloak[nlp,my,gitleaks]`
 - 2 GB+ RAM, 2+ vCPUs
 - If wrapping in FastAPI: use spaCy's `Language.memory_zone` to control memory growth over time
 - For >100 requests/sec: consider multiple workers with pre-loaded models
@@ -592,7 +569,6 @@ Kloak runs on anything from a Raspberry Pi (regex-only) to a production server (
 - **Core (regex-only):** `presidio-analyzer`, `presidio-anonymizer` — NO spaCy, NO NLP models
 - **`[nlp]`:** `spacy`, `en_core_web_sm` (~12MB)
 - `[my]`: no additional deps beyond core
-- `[whatsapp]`: no additional deps beyond core
 - `[gitleaks]`: `httpx`, `tomllib` (stdlib 3.11+)
 - `[compliance]`: no additional deps beyond core
 
@@ -725,7 +701,6 @@ These operate at different layers (proxy/gateway vs application). kloak could in
 | Reversible tokenize + deanonymize | Vault system | Yes (reversible anonymizer) | Yes (mapping in metadata) | Yes | **Yes — core API** |
 | Secrets (API keys, tokens) | Basic scanner | No | No | No | **Yes — GitLeaks dynamic rules** |
 | Regional PII (MyKad, PDPA, etc.) | No | No | No | No | **Yes — extras system** |
-| Chat/WhatsApp pre-processing | No | No | No | No | **Yes — whatsapp extra** |
 | Zero-NLP regex-only mode | No (requires models) | No (requires spaCy) | No (requires NER model) | N/A (SaaS) | **Yes — core install** |
 | Pre-commit hook | No | No | No | No | **Yes** |
 | `include`/`exclude` entity filtering | Per-scanner config | `analyzed_fields` list | Limited | No (all-or-nothing) | **Yes — per-call or engine-level** |
@@ -773,7 +748,7 @@ The README is the #1 conversion surface. Structure it for maximum "star within 3
 
 4. Install what you need (extras table)
 
-5. Framework integrations (LangChain — DocumentTransformer, LCEL Runnable, Callback Handler)
+5. Framework integrations (LangChain — DocumentTransformer, LCEL Runnable, LangSmith trace masking)
 
 6. Full API reference (collapsible)
 
