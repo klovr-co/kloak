@@ -28,7 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 nlp = ["spacy>=3.7"]
-malaysia = []  # marker extra (recognizers ship in core package)
+malaysian = []  # marker extra (recognizers ship in core package)
 gitleaks = ["httpx>=0.27"]
 dev = ["pytest>=8.0", "pytest-cov", "ruff"]
 

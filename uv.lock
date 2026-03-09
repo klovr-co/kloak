@@ -603,7 +603,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "spacy", marker = "extra == 'nlp'", specifier = ">=3.7" },
 ]
-provides-extras = ["nlp", "my", "gitleaks", "dev"]
+provides-extras = ["nlp", "malaysian", "gitleaks", "dev"]
 
 [[package]]
 name = "markdown-it-py"

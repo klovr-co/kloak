@@ -22,12 +22,12 @@ PII + secrets redaction library for Python. Built on Microsoft Presidio. Apache 
 - Build: hatchling, managed with uv
 
 ## Extras
-- `[malaysia]` — Malaysian PII (regex-only, zero extra deps)
+- `[malaysian]` — Malaysian PII (regex-only, zero extra deps)
 - `[gitleaks]` — secrets via GitLeaks TOML (requires httpx)
 - `[nlp]` — spaCy NER for names/orgs/locations
 
 **Every extra must have a matching example in `examples/<extra-name>.py`.**
-Current: `examples/malaysia.py`, `examples/gitleaks.py`
+Current: `examples/malaysian.py`, `examples/gitleaks.py`
 
 **Every extra must have tests under `tests/extras/<extra-name>/`.**
 Current: `tests/extras/malaysian/`, `tests/extras/gitleaks/`
