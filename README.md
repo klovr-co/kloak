@@ -176,15 +176,21 @@ Kloak's job: **text in → PII and secrets stripped → clean text out.**
 
 ## Contributing
 
-### Add your country's PII
+Kloak is built on a modular extras system — there are many ways to contribute beyond the core:
 
-Regional extras are self-contained — just regex patterns + tests. Copy the structure from `kloak/extras/malaysian/` as a template:
+- **Add your country's PII** — regional extras are self-contained regex patterns + tests. Copy `kloak/extras/malaysian/` as a starting point. Singapore, Indonesia, Thailand, EU — each country is a standalone PR.
+- **Add a new recognizer** to an existing extra — e.g. Malaysian passport numbers, additional bank formats.
+- **Add a new extra** — messaging platforms (Telegram, Signal), compliance logging, new secret sources. Each extra is an independent module under `kloak/extras/`.
+- **Improve detection accuracy** — better regex patterns, context word tuning, edge case handling.
+- **Core improvements** — performance, new API features, better NLP backend support.
+
+Every extra follows the same structure:
 
 ```
-kloak/extras/<country>/
+kloak/extras/<name>/
 ├── __init__.py
 ├── recognizers.py          # PatternRecognizer objects
-└── test_fixtures.json      # {"input": "...", "expected_entities": [...]}
+└── test_fixtures.json      # Sample inputs + expected entities
 ```
 
 Every recognizer is a [Presidio `PatternRecognizer`](https://microsoft.github.io/presidio/analyzer/adding_recognizers/):
@@ -199,7 +205,7 @@ PatternRecognizer(
 )
 ```
 
-Then add tests under `tests/extras/<country>/` and open a PR. See `CLAUDE.md` for the full checklist.
+Add tests under `tests/extras/<name>/` and open a PR. See `CLAUDE.md` for the full checklist.
 
 ---
 
