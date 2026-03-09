@@ -17,7 +17,7 @@ PII + secrets redaction library for Python. Built on Microsoft Presidio. Apache 
 
 ## Code style
 - Python 3.11+, type hints on all public functions
-- Linting: `ruff check . && ruff format .`
+- Linting: `ruff check . && ruff format .` (format auto-fixes; CI uses `--check`)
 - Tests: `uv run pytest tests/ -x`
 - Build: hatchling, managed with uv
 
