@@ -29,7 +29,6 @@ htmlcov/
 .pytype/
 
 # IDEs
-.vscode/
 .idea/
 
 # OS
@@ -37,9 +36,9 @@ htmlcov/
 Thumbs.db
 
 # Secrets / env
-.env
-.env.*
 !.env.example
 
 # Project-specific
 .context/
+config.bat
+node_modules
