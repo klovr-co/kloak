@@ -32,3 +32,12 @@ class RedactResult:
 
     text: str
     entities: list[EntityMatch]
+
+
+@dataclass(frozen=True)
+class TokenizeResult:
+    """Result of a tokenize() call — reversible redaction with numbered tokens."""
+
+    text: str
+    mapping: dict[str, str]
+    entities: list[EntityMatch]
