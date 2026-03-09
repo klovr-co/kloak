@@ -1,0 +1,4 @@
+# Mark compiled Python bytecode as binary and exclude from exports/diffs
+*.pyc binary export-ignore
+*.pyo binary export-ignore
+__pycache__/ export-ignore

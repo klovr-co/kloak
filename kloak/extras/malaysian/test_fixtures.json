@@ -1,0 +1,27 @@
+[
+    {
+        "input": "IC saya 880101-01-1234",
+        "expected_entities": ["MY_IC"],
+        "language": "en"
+    },
+    {
+        "input": "Call me at +60121234567",
+        "expected_entities": ["MY_MOBILE"],
+        "language": "en"
+    },
+    {
+        "input": "Office number 03-12345678",
+        "expected_entities": ["MY_LANDLINE"],
+        "language": "en"
+    },
+    {
+        "input": "SSM registration 1234567-A",
+        "expected_entities": ["MY_SSM"],
+        "language": "en"
+    },
+    {
+        "input": "Maybank account 112233445566",
+        "expected_entities": ["MY_BANK_ACCOUNT"],
+        "language": "en"
+    }
+]
