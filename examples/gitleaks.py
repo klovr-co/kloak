@@ -58,7 +58,7 @@ print(result.text)
 
 # --- Use KloakEngine directly for repeated calls ----------------------------
 
-from kloak import KloakEngine
+from kloak import KloakEngine  # noqa: E402
 
 engine = KloakEngine()
 
