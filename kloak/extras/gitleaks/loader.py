@@ -9,6 +9,39 @@ from presidio_analyzer import Pattern, PatternRecognizer
 
 logger = logging.getLogger("kloak")
 
+# ---------------------------------------------------------------------------
+# PCRE → Python regex portability fixes
+# ---------------------------------------------------------------------------
+
+# Mid-pattern (?i) — Python requires global flags at position 0.
+# Rewrite e.g. `prefix(?i)[a-z]{32}` → `prefix(?i:[a-z]{32})`.
+_MID_PATTERN_FLAG = re.compile(r"(?<!^)\(\?i\)")
+
+
+def _fix_mid_pattern_flag(regex: str) -> str:
+    """Hoist mid-pattern ``(?i)`` flags to the start of the pattern.
+
+    Some rules have multiple ``(?i)`` in different branches which can't
+    be individually group-scoped without a full regex parser.  Hoisting
+    to the front is safe — the few rules that use ``(?-i:...)`` to
+    explicitly disable case-insensitivity for a sub-group still work
+    because group-scoped negation overrides the global flag.
+    """
+    if not _MID_PATTERN_FLAG.search(regex):
+        return regex
+    # Strip all mid-pattern (?i) and add a single one at the start.
+    regex = _MID_PATTERN_FLAG.sub("", regex)
+    return f"(?i){regex}"
+
+
+def _pcre_to_python(regex: str) -> str:
+    """Best-effort PCRE/RE2 → Python ``re`` conversion."""
+    # \z (PCRE end-of-string) → \Z (Python equivalent)
+    regex = regex.replace(r"\z", r"\Z")
+    # Mid-pattern (?i) → group-scoped (?i:...)
+    regex = _fix_mid_pattern_flag(regex)
+    return regex
+
 
 def _normalize_entity_name(rule_id: str) -> str:
     """Convert 'openai-api-key' → 'OPENAI_API_KEY'."""
@@ -18,7 +51,8 @@ def _normalize_entity_name(rule_id: str) -> str:
 def load_gitleaks_recognizers(toml_data: dict) -> list[PatternRecognizer]:
     """Convert GitLeaks TOML rules to Presidio PatternRecognizer list.
 
-    Skips rules with incompatible regex (logs warning, never crashes).
+    Applies PCRE→Python regex fixes, then skips any rule that still
+    fails to compile (logs warning, never crashes).
     """
     recognizers: list[PatternRecognizer] = []
 
@@ -28,6 +62,8 @@ def load_gitleaks_recognizers(toml_data: dict) -> list[PatternRecognizer]:
 
         if not rule_id or not regex:
             continue
+
+        regex = _pcre_to_python(regex)
 
         # Validate regex compiles in Python
         try:
