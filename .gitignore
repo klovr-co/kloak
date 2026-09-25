@@ -40,5 +40,5 @@ Thumbs.db
 
 # Project-specific
 .context/
-config.bat
 node_modules
+
